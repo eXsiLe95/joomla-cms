@@ -82,13 +82,21 @@ class Html extends HtmlView
 	 */
 	public function display($tpl = null)
 	{
+		$userItemLimit = 0;
+
 		$this->state         = $this->get('State');
+		$this->sorting       = $this->get('State');
+		//$userItemLimit = $this->state->get('list.limit');
+		//$this->state->set('list.limit', 0);
 		$this->items         = $this->get('Items');
+		//$this->state->set('list.limit', $userItemLimit);
 		$this->pagination    = $this->get('Pagination');
 		$this->assoc         = $this->get('Assoc');
 		$this->filterForm    = $this->get('FilterForm');
 		$this->activeFilters = $this->get('ActiveFilters');
 
+
+		//var_dump($this->state);
 		// Check for errors.
 		if (count($errors = $this->get('Errors')))
 		{

@@ -137,7 +137,9 @@ if ($saveOrder)
 							</tr>
 						</tfoot>
 						<tbody <?php if ($saveOrder) :?> class="js-draggable" data-url="<?php echo $saveOrderingUrl; ?>" data-direction="<?php echo strtolower($listDirn); ?>" data-nested="false"<?php endif; ?>>
-							<?php foreach ($this->items as $i => $item) : ?>
+
+
+                        <?php foreach ($this->items as $i => $item) : ?>
 								<?php
 								$orderkey   = array_search($item->id, $this->ordering[$item->parent_id]);
 								$canEdit    = $user->authorise('core.edit',       $extension . '.category.' . $item->id);

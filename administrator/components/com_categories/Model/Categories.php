@@ -345,16 +345,78 @@ class Categories extends ListModel
 	 */
 	public function getItems()
 	{
-		$items = parent::getItems();
+		$user    = \JFactory::getUser();
+		$items   = parent::getItems();
+		$userId  = $user->get('id');
+		$store = $this->getStoreId();
+		$extension = $this->getState('filter.extension');
+		$renderIDs = array();
+		$collectedItems = array();
 
 		if ($items != false)
 		{
-			$extension = $this->getState('filter.extension');
 
-			$this->countItems($items, $extension);
+			foreach($items as $item)
+			{
+				$collectedItems[$item->id] = $item;
+			}
+
+			foreach($collectedItems as $key => $value)
+			{
+				$canEdit    = $user->authorise('core.edit',       $extension . '.category.' . $key);
+				$canCheckin = $user->authorise('core.admin',      'com_checkin') || $value->checked_out == $userId || $value->checked_out == 0;
+				$canEditOwn = $user->authorise('core.edit.own',   $extension . '.category.' . $key) && $value->created_user_id == $userId;
+				$canChange  = $user->authorise('core.edit.state', $extension . '.category.' . $key) && $canCheckin;
+
+				if($canEdit || $canEditOwn || $canEditOwn || $canChange)
+				{
+					if(!in_array($key, $renderIDs))
+					{
+						$renderIDs[] = $key;
+						if($value->level > 1)
+						{
+							$this->getParentID($renderIDs, $collectedItems, (int)$value->parent_id);
+						}
+					}
+				}
+			}
+
+			foreach($collectedItems as $key => $value)
+			{
+				if(!in_array($key, $renderIDs))
+				{
+					unset($collectedItems[$key]);
+				}
+			}
+
+			$this->countItems($collectedItems, $extension);
 		}
 
-		return $items;
+		$this->cache[$store] = $collectedItems;
+
+		return $collectedItems;
+	}
+
+	function getParentID(&$renderIDs, &$collectedItems, $parentID)
+	{
+
+		if(!in_array($parentID, $renderIDs))
+		{
+			$renderIDs[] = $parentID;
+			if((int)$collectedItems[$parentID]->level > 1)
+			{
+				$this->getParentID($renderIDs, $collectedItems, (int)$collectedItems[$parentID]->parent_id);
+			}
+		}
+	}
+
+	public function getPagination()
+	{
+		$store = $this->getStoreId();
+		$storePagination = $this->getStoreId('getPagination');
+		$limit = (int) $this->getState('list.limit') - (int) $this->getState('list.links');
+		$this->cache[$storePagination] = new \JPagination(count($this->cache[$store]), $this->getStart(), $limit);
+		return $this->cache[$storePagination];
 	}
 
 	/**

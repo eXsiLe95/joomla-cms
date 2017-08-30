@@ -186,7 +186,7 @@ class ListModel extends Model
 		try
 		{
 			// Load the list items and add the items to the internal cache.
-			$this->cache[$store] = $this->_getList($this->_getListQuery(), $this->getStart(), $this->getState('list.limit'));
+			$this->cache[$store] = $this->_getList($this->_getListQuery(), $this->getStart(), 0/*$this->getState('list.limit')*/);
 		}
 		catch (\RuntimeException $e)
 		{
