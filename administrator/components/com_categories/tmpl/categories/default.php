@@ -164,13 +164,17 @@ if ($saveOrder)
 											{
 											    if ($k > 1)
                                                 {
-	                                                $itemPath = $item->title . (($itemPath) ? ' > ' : '') . $itemPath;
+	                                                $itemPath = $this->items[$k]->title . (($itemPath) ? ' > ' : '') . $itemPath;
                                                 }
 												$parentsStr .= ' ' . $k;
 												$_currentParentId = $k;
 												break;
 											}
 										}
+									}
+									if ($item->parent_id)
+									{
+										$itemPath .= (($itemPath) ? ' > ' : '') . $this->items[$item->parent_id]->title;
 									}
 								}
 								else
