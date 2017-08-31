@@ -146,6 +146,7 @@ if ($saveOrder)
 								$canCheckin = $user->authorise('core.admin',      'com_checkin') || $item->checked_out == $userId || $item->checked_out == 0;
 								$canEditOwn = $user->authorise('core.edit.own',   $extension . '.category.' . $item->id) && $item->created_user_id == $userId;
 								$canChange  = $user->authorise('core.edit.state', $extension . '.category.' . $item->id) && $canCheckin;
+								$itemPath   = '';
 
 								// Get the parents of item for sorting
 								if ($item->level > 1)
@@ -161,6 +162,10 @@ if ($saveOrder)
 											$v = '-' . $v . '-';
 											if (strpos($v, '-' . $_currentParentId . '-') !== false)
 											{
+											    if ($k > 1)
+                                                {
+	                                                $itemPath = $item->title . (($itemPath) ? ' > ' : '') . $itemPath;
+                                                }
 												$parentsStr .= ' ' . $k;
 												$_currentParentId = $k;
 												break;
@@ -219,7 +224,8 @@ if ($saveOrder)
 											<?php else : ?>
 												<?php echo JText::sprintf('JGLOBAL_LIST_ALIAS_NOTE', $this->escape($item->alias), $this->escape($item->note)); ?>
 											<?php endif; ?>
-										</span>
+										</span><br />
+                                        <span class="small" title="<?php echo $this->escape($itemPath); ?>"><?php echo ($itemPath) ? 'Path: ' . $this->escape($itemPath) : '' ; ?></span>
 									</td>
 									<?php if (isset($this->items[0]) && property_exists($this->items[0], 'count_published')) : ?>
 										<td class="text-center btns hidden-sm-down">
