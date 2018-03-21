@@ -49,6 +49,7 @@ abstract class ParagonIE_Sodium_Core_Util
      *
      * @param string $bin_string (raw binary)
      * @return string
+     * @throws TypeError
      */
     public static function bin2hexUpper($bin_string)
     {
@@ -91,7 +92,8 @@ abstract class ParagonIE_Sodium_Core_Util
      *
      * @param string $chr
      * @return int
-     * @throws Error
+     * @throws SodiumException
+     * @throws TypeError
      */
     public static function chrToInt($chr)
     {
@@ -100,7 +102,7 @@ abstract class ParagonIE_Sodium_Core_Util
             throw new TypeError('Argument 1 must be a string, ' . gettype($chr) . ' given.');
         }
         if (self::strlen($chr) !== 1) {
-            throw new Error('chrToInt() expects a string that is exactly 1 character long');
+            throw new SodiumException('chrToInt() expects a string that is exactly 1 character long');
         }
         $chunk = unpack('C', $chr);
         return $chunk[1];
@@ -115,6 +117,8 @@ abstract class ParagonIE_Sodium_Core_Util
      * @param string $right
      * @param int $len
      * @return int
+     * @throws SodiumException
+     * @throws TypeError
      */
     public static function compare($left, $right, $len = null)
     {
@@ -138,11 +142,90 @@ abstract class ParagonIE_Sodium_Core_Util
     }
 
     /**
+     * If a variable does not match a given type, throw a TypeError.
+     *
+     * @param mixed $mixedVar
+     * @param string $type
+     * @param int $argumentIndex
+     * @throws TypeError
+     * @throws SodiumException
+     * @return void
+     */
+    public static function declareScalarType(&$mixedVar = null, $type = 'void', $argumentIndex = 0)
+    {
+        if (func_num_args() === 0) {
+            /* Tautology, by default */
+            return;
+        }
+        if (func_num_args() === 1) {
+            throw new TypeError('Declared void, but passed a variable');
+        }
+        $realType = strtolower(gettype($mixedVar));
+        $type = strtolower($type);
+        switch ($type) {
+            case 'null':
+                if ($mixedVar !== null) {
+                    throw new TypeError('Argument ' . $argumentIndex . ' must be null, ' . $realType . ' given.');
+                }
+                break;
+            case 'integer':
+            case 'int':
+                $allow = array('int', 'integer');
+                if (!in_array($type, $allow)) {
+                    throw new TypeError('Argument ' . $argumentIndex . ' must be an integer, ' . $realType . ' given.');
+                }
+                $mixedVar = (int) $mixedVar;
+                break;
+            case 'boolean':
+            case 'bool':
+                $allow = array('bool', 'boolean');
+                if (!in_array($type, $allow)) {
+                    throw new TypeError('Argument ' . $argumentIndex . ' must be a boolean, ' . $realType . ' given.');
+                }
+                $mixedVar = (bool) $mixedVar;
+                break;
+            case 'string':
+                if (!is_string($mixedVar)) {
+                    throw new TypeError('Argument ' . $argumentIndex . ' must be a string, ' . $realType . ' given.');
+                }
+                $mixedVar = (string) $mixedVar;
+                break;
+            case 'decimal':
+            case 'double':
+            case 'float':
+                $allow = array('decimal', 'double', 'float');
+                if (!in_array($type, $allow)) {
+                    throw new TypeError('Argument ' . $argumentIndex . ' must be a float, ' . $realType . ' given.');
+                }
+                $mixedVar = (float) $mixedVar;
+                break;
+            case 'object':
+                if (!is_object($mixedVar)) {
+                    throw new TypeError('Argument ' . $argumentIndex . ' must be an object, ' . $realType . ' given.');
+                }
+                break;
+            case 'array':
+                if (!is_array($mixedVar)) {
+                    if (is_object($mixedVar)) {
+                        if ($mixedVar instanceof ArrayAccess) {
+                            return;
+                        }
+                    }
+                    throw new TypeError('Argument ' . $argumentIndex . ' must be an array, ' . $realType . ' given.');
+                }
+                break;
+            default:
+                throw new SodiumException('Unknown type (' . $realType .') does not match expect type (' . $type . ')');
+        }
+    }
+
+    /**
      * Evaluate whether or not two strings are equal (in constant-time)
      *
      * @param string $left
      * @param string $right
      * @return bool
+     * @throws SodiumException
      * @throws TypeError
      */
     public static function hashEquals($left, $right)
@@ -287,10 +370,9 @@ abstract class ParagonIE_Sodium_Core_Util
                 'String must be 3 bytes or more; ' . self::strlen($string) . ' given.'
             );
         }
-        $result = self::chrToInt($string[0]);
-        $result |= self::chrToInt($string[1]) << 8;
-        $result |= self::chrToInt($string[2]) << 16;
-        return $result & 0xffffff;
+        /** @var array<int, int> $unpacked */
+        $unpacked = unpack('V', $string . "\0");
+        return (int) ($unpacked[1] & 0xffffff);
     }
 
     /**
@@ -316,11 +398,9 @@ abstract class ParagonIE_Sodium_Core_Util
                 'String must be 4 bytes or more; ' . self::strlen($string) . ' given.'
             );
         }
-        $result  = (self::chrToInt($string[0]) & 0xff);
-        $result |= (self::chrToInt($string[1]) & 0xff) <<  8;
-        $result |= (self::chrToInt($string[2]) & 0xff) << 16;
-        $result |= (self::chrToInt($string[3]) & 0xff) << 24;
-        return $result & 0xffffffff;
+        /** @var array<int, int> $unpacked */
+        $unpacked = unpack('V', $string);
+        return (int) ($unpacked[1] & 0xffffffff);
     }
 
     /**
@@ -331,6 +411,7 @@ abstract class ParagonIE_Sodium_Core_Util
      * @param string $string
      * @return int
      * @throws RangeException
+     * @throws SodiumException
      * @throws TypeError
      */
     public static function load64_le($string)
@@ -346,6 +427,12 @@ abstract class ParagonIE_Sodium_Core_Util
                 'String must be 4 bytes or more; ' . self::strlen($string) . ' given.'
             );
         }
+        if (PHP_VERSION_ID >= 50603 && PHP_INT_SIZE === 8) {
+            /** @var array<int, int> $unpacked */
+            $unpacked = unpack('P', $string);
+            return (int) $unpacked[1];
+        }
+
         $result  = (self::chrToInt($string[0]) & 0xff);
         $result |= (self::chrToInt($string[1]) & 0xff) <<  8;
         $result |= (self::chrToInt($string[2]) & 0xff) << 16;
@@ -363,6 +450,8 @@ abstract class ParagonIE_Sodium_Core_Util
      * @param string $left
      * @param string $right
      * @return int
+     * @throws SodiumException
+     * @throws TypeError
      */
     public static function memcmp($left, $right)
     {
@@ -385,17 +474,22 @@ abstract class ParagonIE_Sodium_Core_Util
      *
      * @param int $a
      * @param int $b
+     * @param int $size Limits the number of operations (useful for small,
+     *                  constant operands)
      * @return int
      */
-    public static function mul($a, $b)
+    public static function mul($a, $b, $size = 0)
     {
         if (ParagonIE_Sodium_Compat::$fastMult) {
             return (int) ($a * $b);
         }
 
-        static $size = null;
-        if (!$size) {
-            $size = (PHP_INT_SIZE << 3) - 1;
+        static $defaultSize = null;
+        if (!$defaultSize) {
+            $defaultSize = (PHP_INT_SIZE << 3) - 1;
+        }
+        if ($size < 1) {
+            $size = $defaultSize;
         }
 
         $c = 0;
@@ -417,6 +511,8 @@ abstract class ParagonIE_Sodium_Core_Util
         $b = ($b & ~$mask) | ($mask & -$b);
 
         /**
+         * Unless $size is provided:
+         *
          * This loop always runs 32 times when PHP_INT_SIZE is 4.
          * This loop always runs 64 times when PHP_INT_SIZE is 8.
          */
@@ -481,10 +577,9 @@ abstract class ParagonIE_Sodium_Core_Util
                 throw new TypeError('Argument 1 must be an integer, ' . gettype($int) . ' given.');
             }
         }
-
-        return self::intToChr(($int >> 16) & 0xff) .
-            self::intToChr(($int >> 8)     & 0xff) .
-            self::intToChr($int            & 0xff);
+        /** @var string $packed */
+        $packed = pack('N', $int);
+        return self::substr($packed, 1, 3);
     }
 
     /**
@@ -507,10 +602,9 @@ abstract class ParagonIE_Sodium_Core_Util
             }
         }
 
-        return self::intToChr($int      & 0xff) .
-            self::intToChr(($int >> 8)  & 0xff) .
-            self::intToChr(($int >> 16) & 0xff) .
-            self::intToChr(($int >> 24) & 0xff);
+        /** @var string $packed */
+        $packed = pack('V', $int);
+        return $packed;
     }
 
     /**
@@ -533,10 +627,9 @@ abstract class ParagonIE_Sodium_Core_Util
             }
         }
 
-        return self::intToChr(($int >> 24) & 0xff) .
-            self::intToChr(($int >> 16)    & 0xff) .
-            self::intToChr(($int >> 8)     & 0xff) .
-            self::intToChr($int            & 0xff);
+        /** @var string $packed */
+        $packed = pack('N', $int);
+        return $packed;
     }
 
     /**
@@ -560,6 +653,11 @@ abstract class ParagonIE_Sodium_Core_Util
         }
 
         if (PHP_INT_SIZE === 8) {
+            if (PHP_VERSION_ID >= 50603) {
+                /** @var string $packed */
+                $packed = pack('P', $int);
+                return $packed;
+            }
             return self::intToChr($int & 0xff) .
                 self::intToChr(($int >>  8) & 0xff) .
                 self::intToChr(($int >> 16) & 0xff) .
@@ -574,14 +672,15 @@ abstract class ParagonIE_Sodium_Core_Util
         } else {
             $hiB = 0;
         }
-        return self::intToChr($hiB & 0xff) .
-            self::intToChr(($hiB >>  8) & 0xff) .
-            self::intToChr(($hiB >> 16) & 0xff) .
-            self::intToChr(($hiB >> 24) & 0xff) .
+        return
             self::intToChr(($int      ) & 0xff) .
             self::intToChr(($int >>  8) & 0xff) .
             self::intToChr(($int >> 16) & 0xff) .
-            self::intToChr(($int >> 24) & 0xff);
+            self::intToChr(($int >> 24) & 0xff) .
+            self::intToChr($hiB & 0xff) .
+            self::intToChr(($hiB >>  8) & 0xff) .
+            self::intToChr(($hiB >> 16) & 0xff) .
+            self::intToChr(($hiB >> 24) & 0xff);
     }
 
     /**
@@ -680,6 +779,7 @@ abstract class ParagonIE_Sodium_Core_Util
      * @param string $a
      * @param string $b
      * @return bool
+     * @throws SodiumException
      * @throws TypeError
      */
     public static function verify_16($a, $b)
@@ -705,6 +805,7 @@ abstract class ParagonIE_Sodium_Core_Util
      * @param string $a
      * @param string $b
      * @return bool
+     * @throws SodiumException
      * @throws TypeError
      */
     public static function verify_32($a, $b)

@@ -63,10 +63,8 @@ $readMeFiles = array(
 $directoryLoopExcludeDirectories = array(
 			'/.git',
 			'/libraries/vendor/',
-			'/libraries/phputf8/',
 			'/libraries/php-encryption/',
 			'/libraries/phpass/',
-			'/libraries/idna_convert/',
 			);
 
 $directoryLoopExcludeFiles = array(
@@ -153,7 +151,7 @@ $version = array(
 		'major'      => $versionSubParts[0],
 		'minor'      => $versionSubParts[1],
 		'patch'      => $versionSubParts[2],
-		'extra'      => !empty($versionParts[2]) ? $versionParts[2] : (!empty($versionParts[1]) ? $versionParts[1] : ''),
+		'extra'      => (!empty($versionParts[1]) ? $versionParts[1] : '') . (!empty($versionParts[2]) ? (!empty($versionParts[1]) ? '-' : '') . $versionParts[2] : ''),
 		'release'    => $versionSubParts[0] . '.' . $versionSubParts[1] . '.' . $versionSubParts[2],
 		'dev_devel'  => $versionSubParts[2] . (!empty($versionParts[1]) ? '-' . $versionParts[1] : '') . (!empty($versionParts[2]) ? '-' . $versionParts[2] : ''),
 		'dev_status' => $dev_status,

@@ -114,7 +114,7 @@ class BaseLayout implements LayoutInterface
 	 */
 	public function escape($output)
 	{
-		return htmlspecialchars($output, ENT_COMPAT, 'UTF-8');
+		return htmlspecialchars($output, ENT_QUOTES, 'UTF-8');
 	}
 
 	/**
@@ -223,7 +223,7 @@ class BaseLayout implements LayoutInterface
 	 */
 	public function get($key, $defaultValue = null)
 	{
-		return isset($this->data[$key]) ? $this->data[$key] : $defaultValue;
+		return $this->data[$key] ?? $defaultValue;
 	}
 
 	/**
