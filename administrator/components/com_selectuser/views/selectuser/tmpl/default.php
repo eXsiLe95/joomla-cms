@@ -9,9 +9,9 @@
 // No direct access to this file
 defined('_JEXEC') or die('Restricted access');
 ?>
-<form>
+<form action="index.php?option=com_selectuser" method="post" id="userSelection" name="userSelection">
     Select a user to be displayed in the frontend:
-	<select>
+	<select name="selectedUser">
 		<?php
 		foreach ($this->users as $user) {
 			echo '<option value="' . $user->id . '">' . $user->username . '</option>';

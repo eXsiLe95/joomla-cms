@@ -52,4 +52,15 @@ class SelectUserModelSelectUser extends JModelItem
 
 		return $this->options;
 	}
+
+	public function setUser($userId) {
+		$db    = JFactory::getDBO();
+		$query = $db->getQuery(true);
+		$columns = $db->quoteName('userId');
+		$query->insert($db->quoteName('#__selectuser'));
+		$query->columns($columns);
+		$query->values($userId);;
+		$db->setQuery((string) $query);
+		$db->execute();
+	}
 }

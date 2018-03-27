@@ -13,6 +13,11 @@ defined('_JEXEC') or die('Restricted access');
 $controller = JControllerLegacy::getInstance('SelectUser');
 
 // Perform the Request task
+$userId = JFactory::getApplication()->input->get('selectedUser');
+if(isset($userId)){
+	$model = $controller->getModel('SelectUser');
+	$model->setUser($userId);
+}
 $controller->execute(JFactory::getApplication()->input->get('task'));
 
 // Redirect if set by the controller
