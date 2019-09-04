@@ -2,14 +2,15 @@
 /**
  * Joomla! Content Management System
  *
- * @copyright  Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright  Copyright (C) 2005 - 2019 Open Source Matters, Inc. All rights reserved.
  * @license    GNU General Public License version 2 or later; see LICENSE.txt
  */
 
 namespace Joomla\CMS\Exception;
 
-defined('JPATH_PLATFORM') or die;
+\defined('JPATH_PLATFORM') or die;
 
+use Joomla\CMS\Application\CMSApplication;
 use Joomla\CMS\Error\AbstractRenderer;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Log\Log;
@@ -45,7 +46,7 @@ class ExceptionHandler
 			);
 
 			// If debug mode is enabled, we want to let PHP continue to handle the error; otherwise, we can bail early
-			if (defined('JDEBUG') && JDEBUG)
+			if (\defined('JDEBUG') && JDEBUG)
 			{
 				return true;
 			}
@@ -76,7 +77,7 @@ class ExceptionHandler
 				Log::add(
 					sprintf(
 						'Uncaught Throwable of type %1$s thrown with message "%2$s". Stack trace: %3$s',
-						get_class($error),
+						\get_class($error),
 						$error->getMessage(),
 						$error->getTraceAsString()
 					),
@@ -126,6 +127,10 @@ class ExceptionHandler
 				$renderer = AbstractRenderer::getRenderer('html');
 			}
 
+			// Reset the document object in the factory, this gives us a clean slate and lets everything render properly
+			Factory::$document = $renderer->getDocument();
+			Factory::getApplication()->loadDocument(Factory::$document);
+
 			$data = $renderer->render($error);
 
 			// If nothing was rendered, just use the message from the Exception
@@ -140,12 +145,12 @@ class ExceptionHandler
 			}
 			else
 			{
+				/** @var CMSApplication $app */
+
 				// Do not allow cache
 				$app->allowCache(false);
 
 				$app->setBody($data);
-
-				echo $app->toString();
 			}
 
 			// This return is needed to ensure the test suite does not trigger the non-Exception handling below

@@ -2,16 +2,17 @@
 /**
  * Joomla! Content Management System
  *
- * @copyright  Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright  Copyright (C) 2005 - 2019 Open Source Matters, Inc. All rights reserved.
  * @license    GNU General Public License version 2 or later; see LICENSE
  */
 
 namespace Joomla\CMS\Error\Renderer;
 
-defined('JPATH_PLATFORM') or die;
+\defined('JPATH_PLATFORM') or die;
 
 use Joomla\CMS\Error\AbstractRenderer;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 
 /**
  * HTML error page renderer
@@ -53,14 +54,15 @@ class HtmlRenderer extends AbstractRenderer
 			ob_end_clean();
 		}
 
-		$this->getDocument()->setTitle(\JText::_('Error') . ': ' . $error->getCode());
+		$this->getDocument()->setTitle(Text::_('Error') . ': ' . $error->getCode());
 
 		return $this->getDocument()->render(
 			false,
 			[
 				'template'  => $template,
 				'directory' => JPATH_THEMES,
-				'debug'     => JDEBUG
+				'debug'     => JDEBUG,
+				'csp_nonce' => $app->get('csp_nonce'),
 			]
 		);
 	}

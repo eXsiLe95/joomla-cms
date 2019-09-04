@@ -2,7 +2,7 @@
 /**
  * Joomla! Content Management System
  *
- * @copyright  Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright  Copyright (C) 2005 - 2019 Open Source Matters, Inc. All rights reserved.
  * @license    GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -12,23 +12,21 @@ defined('JPATH_PLATFORM') or die;
 
 use Joomla\CMS\Factory;
 use Joomla\CMS\Table\Table;
+use Joomla\Database\ParameterType;
 
-\JLoader::import('joomla.filesystem.file');
-\JLoader::import('joomla.filesystem.folder');
-\JLoader::import('joomla.filesystem.path');
 \JLoader::import('joomla.base.adapter');
 
 /**
  * Updater Class
  *
- * @since  11.1
+ * @since  1.7.0
  */
 class Updater extends \JAdapter
 {
 	/**
 	 * Development snapshots, nightly builds, pre-release versions and so on
 	 *
-	 * @const  integer
+	 * @var    integer
 	 * @since  3.4
 	 */
 	const STABILITY_DEV = 0;
@@ -36,7 +34,7 @@ class Updater extends \JAdapter
 	/**
 	 * Alpha versions (work in progress, things are likely to be broken)
 	 *
-	 * @const  integer
+	 * @var    integer
 	 * @since  3.4
 	 */
 	const STABILITY_ALPHA = 1;
@@ -44,7 +42,7 @@ class Updater extends \JAdapter
 	/**
 	 * Beta versions (major functionality in place, show-stopper bugs are likely to be present)
 	 *
-	 * @const  integer
+	 * @var    integer
 	 * @since  3.4
 	 */
 	const STABILITY_BETA = 2;
@@ -52,7 +50,7 @@ class Updater extends \JAdapter
 	/**
 	 * Release Candidate versions (almost stable, minor bugs might be present)
 	 *
-	 * @const  integer
+	 * @var    integer
 	 * @since  3.4
 	 */
 	const STABILITY_RC = 3;
@@ -60,14 +58,16 @@ class Updater extends \JAdapter
 	/**
 	 * Stable versions (production quality code)
 	 *
-	 * @const  integer
+	 * @var    integer
 	 * @since  3.4
 	 */
 	const STABILITY_STABLE = 4;
 
 	/**
-	 * @var    Updater  Updater instance container.
-	 * @since  11.3
+	 * Updater instance container.
+	 *
+	 * @var    Updater
+	 * @since  1.7.3
 	 */
 	protected static $instance;
 
@@ -91,7 +91,7 @@ class Updater extends \JAdapter
 	 *
 	 * @return  Updater  An installer object
 	 *
-	 * @since   11.1
+	 * @since   1.7.0
 	 */
 	public static function getInstance()
 	{
@@ -116,7 +116,7 @@ class Updater extends \JAdapter
 	 *
 	 * @return  boolean True if there are updates
 	 *
-	 * @since   11.1
+	 * @since   1.7.0
 	 */
 	public function findUpdates($eid = 0, $cacheTimeout = 0, $minimum_stability = self::STABILITY_STABLE, $includeCurrent = false)
 	{
@@ -190,21 +190,34 @@ class Updater extends \JAdapter
 		$db    = $this->getDbo();
 		$query = $db->getQuery(true);
 
-		$query->select('DISTINCT a.update_site_id, a.type, a.location, a.last_check_timestamp, a.extra_query')
+		$query->select(
+			[
+				'DISTINCT ' . $db->quoteName('a.update_site_id'),
+				$db->quoteName('a.type'),
+				$db->quoteName('a.location'),
+				$db->quoteName('a.last_check_timestamp'),
+				$db->quoteName('a.extra_query'),
+			]
+		)
 			->from($db->quoteName('#__update_sites', 'a'))
-			->where('a.enabled = 1');
+			->where($db->quoteName('a.enabled') . ' = 1');
 
 		if ($eid)
 		{
-			$query->join('INNER', '#__update_sites_extensions AS b ON a.update_site_id = b.update_site_id');
+			$query->join(
+				'INNER',
+				$db->quoteName('#__update_sites_extensions', 'b'),
+				$db->quoteName('a.update_site_id') . ' = ' . $db->quoteName('b.update_site_id')
+			);
 
 			if (is_array($eid))
 			{
-				$query->where('b.extension_id IN (' . implode(',', $eid) . ')');
+				$query->whereIn($db->quoteName('b.extension_id'), $eid);
 			}
-			elseif ((int) $eid)
+			elseif ($eid = (int) $eid)
 			{
-				$query->where('b.extension_id = ' . $eid);
+				$query->where($db->quoteName('b.extension_id') . ' = :eid')
+					->bind(':eid', $eid, ParameterType::INTEGER);
 			}
 		}
 
@@ -364,21 +377,28 @@ class Updater extends \JAdapter
 	 */
 	private function getSitesWithUpdates($timestamp = 0)
 	{
-		$db = Factory::getDbo();
+		$db        = Factory::getDbo();
+		$timestamp = (int) $timestamp;
 
 		$query = $db->getQuery(true)
-			->select('DISTINCT update_site_id')
-			->from('#__updates');
+			->select('DISTINCT ' . $db->quoteName('update_site_id'))
+			->from($db->quoteName('#__updates'));
 
 		if ($timestamp)
 		{
 			$subQuery = $db->getQuery(true)
-				->select('update_site_id')
-				->from('#__update_sites')
-				->where($db->qn('last_check_timestamp') . ' IS NULL', 'OR')
-				->where($db->qn('last_check_timestamp') . ' <= ' . $db->q($timestamp), 'OR');
+				->select($db->quoteName('update_site_id'))
+				->from($db->quoteName('#__update_sites'))
+				->where(
+					[
+						$db->quoteName('last_check_timestamp') . ' IS NULL',
+						$db->quoteName('last_check_timestamp') . ' <= :timestamp',
+					],
+					'OR'
+				);
 
-			$query->where($db->qn('update_site_id') . ' IN (' . $subQuery . ')');
+			$query->where($db->quoteName('update_site_id') . ' IN (' . $subQuery . ')')
+				->bind(':timestamp', $timestamp, ParameterType::INTEGER);
 		}
 
 		$retVal = $db->setQuery($query)->loadColumn(0);
@@ -402,13 +422,16 @@ class Updater extends \JAdapter
 	 */
 	private function updateLastCheckTimestamp($updateSiteId)
 	{
-		$timestamp = time();
-		$db        = Factory::getDbo();
+		$timestamp    = time();
+		$db           = Factory::getDbo();
+		$updateSiteId = (int) $updateSiteId;
 
 		$query = $db->getQuery(true)
 			->update($db->quoteName('#__update_sites'))
-			->set($db->quoteName('last_check_timestamp') . ' = ' . $db->quote($timestamp))
-			->where($db->quoteName('update_site_id') . ' = ' . $db->quote($updateSiteId));
+			->set($db->quoteName('last_check_timestamp') . ' = :timestamp')
+			->where($db->quoteName('update_site_id') . ' = :id')
+			->bind(':timestamp', $timestamp, ParameterType::INTEGER)
+			->bind(':id', $updateSiteId, ParameterType::INTEGER);
 		$db->setQuery($query);
 		$db->execute();
 	}

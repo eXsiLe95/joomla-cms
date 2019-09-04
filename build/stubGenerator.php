@@ -2,7 +2,7 @@
 /**
  * @package    Joomla.Build
  *
- * @copyright  Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright  Copyright (C) 2005 - 2019 Open Source Matters, Inc. All rights reserved.
  * @license    GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -11,6 +11,7 @@ const _JEXEC = 1;
 
 // Import namespaced classes
 use Joomla\CMS\Application\CliApplication;
+use Joomla\CMS\Factory;
 
 // Load system defines
 if (file_exists(dirname(__DIR__) . '/defines.php'))
@@ -48,6 +49,8 @@ ini_set('display_errors', 1);
  */
 class StubGenerator extends CliApplication
 {
+	use \Joomla\CMS\Application\ExtensionNamespaceMapper;
+
 	/**
 	 * Entry point for CLI script
 	 *
@@ -57,23 +60,36 @@ class StubGenerator extends CliApplication
 	 */
 	public function doExecute()
 	{
-		// Get the aliased class names via Reflection as the property is protected
-		$refl = new ReflectionClass('JLoader');
-		$property = $refl->getProperty('classAliases');
-		$property->setAccessible(true);
-		$aliases = $property->getValue();
+		$this->createExtensionNamespaceMap();
 
 		$file = "<?php\n";
 
 		// Loop the aliases to generate the stubs data
-		foreach ($aliases as $oldName => $newName)
+		foreach (JLoader::getDeprecatedAliases() as $alias)
 		{
+			$oldName           = $alias['old'];
+			$newName           = $alias['new'];
+			$deprecatedVersion = $alias['version'];
+
 			// Figure out if the alias is for a class or interface
 			$reflection = new ReflectionClass($newName);
-			$type = $reflection->isInterface() ? 'interface' : 'class';
-			$modifier = ($reflection->isAbstract() && !$reflection->isInterface()) ? 'abstract ' : '';
+			$type       = $reflection->isInterface() ? 'interface' : 'class';
+			$modifier   = (!$reflection->isInterface() && $reflection->isFinal()) ? 'final ' : '';
+			$modifier   = ($reflection->isAbstract() && !$reflection->isInterface()) ? $modifier . 'abstract ' : $modifier;
 
-			$file .= "$modifier$type $oldName extends $newName {}\n";
+			// If a deprecated version is available, write a stub class doc block with a deprecated tag
+			if ($deprecatedVersion !== false)
+			{
+				$file .= <<<PHP
+/**
+ * @deprecated $deprecatedVersion Use $newName instead.
+ */
+
+PHP;
+
+			}
+
+			$file .= "$modifier$type $oldName extends $newName {}\n\n";
 		}
 
 		// And save the file locally
@@ -81,7 +97,51 @@ class StubGenerator extends CliApplication
 
 		$this->out('Stubs file written', true);
 	}
+
+	/**
+	 * Gets the name of the current running application.
+	 *
+	 * @return  string  The name of the application.
+	 *
+	 * @since   4.0.0
+	 */
+	public function getName()
+	{
+		return 'cli-stubgen';
+	}
+
+	/**
+	 * Get the menu object.
+	 *
+	 * @param string $name    The application name for the menu
+	 * @param array  $options An array of options to initialise the menu with
+	 *
+	 * @return  \Joomla\CMS\Menu\AbstractMenu|null  A AbstractMenu object or null if not set.
+	 *
+	 * @since   4.0.0
+	 */
+	public function getMenu($name = null, $options = array())
+	{
+		throw new \BadMethodCallException('CLI Application has no menu');
+	}
 }
 
-// Instantiate the application and execute it
-CliApplication::getInstance('StubGenerator')->execute();
+Factory::getContainer()->share(
+	'StubGenerator',
+	function (\Joomla\DI\Container $container)
+	{
+		return new \StubGenerator(
+			null,
+			null,
+			null,
+			null,
+			$container->get(\Joomla\Event\DispatcherInterface::class),
+			$container
+		);
+	},
+	true
+);
+
+$app = Factory::getContainer()->get('StubGenerator');
+Factory::$application = $app;
+$app->execute();

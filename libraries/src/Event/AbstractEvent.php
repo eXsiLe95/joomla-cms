@@ -2,17 +2,17 @@
 /**
  * Joomla! Content Management System
  *
- * @copyright  Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright  Copyright (C) 2005 - 2019 Open Source Matters, Inc. All rights reserved.
  * @license    GNU General Public License version 2 or later; see LICENSE
  */
 
 namespace Joomla\CMS\Event;
 
-defined('JPATH_PLATFORM') or die;
+\defined('JPATH_PLATFORM') or die;
 
+use BadMethodCallException;
 use Joomla\Event\Event as BaseEvent;
 use Joomla\String\Normalise;
-use BadMethodCallException;
 
 /**
  * This class implements the base Event object used system-wide to offer orthogonality. Core objects such as Models,
@@ -76,7 +76,7 @@ abstract class AbstractEvent extends BaseEvent
 		}
 
 		// Make sure a non-empty subject argument exists and that it is an object
-		if (!isset($arguments['subject']) || empty($arguments['subject']) || !is_object($arguments['subject']))
+		if (!isset($arguments['subject']) || empty($arguments['subject']) || !\is_object($arguments['subject']))
 		{
 			throw new BadMethodCallException("No subject given for the $eventName event");
 		}

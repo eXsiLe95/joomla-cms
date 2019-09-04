@@ -3,16 +3,16 @@
  * @package     Joomla.Plugin
  * @subpackage  Editors.none
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2019 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
 
 defined('_JEXEC') or die;
 
-use Joomla\Event\Event;
 use Joomla\CMS\HTML\HTMLHelper;
-use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Layout\LayoutHelper;
+use Joomla\CMS\Plugin\CMSPlugin;
+use Joomla\Event\Event;
 
 /**
  * Plain Textarea Editor Plugin
@@ -21,19 +21,6 @@ use Joomla\CMS\Layout\LayoutHelper;
  */
 class PlgEditorNone extends CMSPlugin
 {
-	/**
-	 * Method to handle the onInitEditor event.
-	 *  - Initialises the Editor
-	 *
-	 * @return  void
-	 *
-	 * @since 1.5
-	 */
-	public function onInit()
-	{
-		HTMLHelper::_('script', 'editors/none/editor-none.min.js', array('version' => 'auto', 'relative' => true));
-	}
-
 	/**
 	 * Display the editor area.
 	 *
@@ -72,11 +59,13 @@ class PlgEditorNone extends CMSPlugin
 
 		$readonly = !empty($params['readonly']) ? ' readonly disabled' : '';
 
-		return '<div class="js-editor-none">'
+		HTMLHelper::_('webcomponent', 'plg_editors_none/joomla-editor-none.min.js', ['version' => 'auto', 'relative' => true]);
+
+		return '<joomla-editor-none>'
 			. '<textarea name="' . $name . '" id="' . $id . '" cols="' . $col . '" rows="' . $row
 			. '" style="width: ' . $width . '; height: ' . $height . ';"' . $readonly . '>' . $content . '</textarea>'
-			. $this->_displayButtons($id, $buttons, $asset, $author)
-			. '</div>';
+			. '</joomla-editor-none>'
+			. $this->_displayButtons($id, $buttons, $asset, $author);
 	}
 
 	/**

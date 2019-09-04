@@ -2,7 +2,7 @@
 /**
  * Joomla! Content Management System
  *
- * @copyright  Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright  Copyright (C) 2005 - 2019 Open Source Matters, Inc. All rights reserved.
  * @license    GNU General Public License version 2 or later; see LICENSE.txt
  */
 
@@ -12,8 +12,10 @@ defined('JPATH_PLATFORM') or die;
 
 use Joomla\CMS\Factory;
 use Joomla\CMS\Http\HttpFactory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\Log\Log;
 use Joomla\CMS\Version;
+use Joomla\Database\ParameterType;
 use Joomla\Registry\Registry;
 
 \JLoader::import('joomla.base.adapterinstance');
@@ -21,7 +23,7 @@ use Joomla\Registry\Registry;
 /**
  * UpdateAdapter class.
  *
- * @since  11.1
+ * @since  1.7.0
  */
 abstract class UpdateAdapter extends \JAdapterInstance
 {
@@ -29,7 +31,7 @@ abstract class UpdateAdapter extends \JAdapterInstance
 	 * Resource handle for the XML Parser
 	 *
 	 * @var    resource
-	 * @since  12.1
+	 * @since  3.0.0
 	 */
 	protected $xmlParser;
 
@@ -37,7 +39,7 @@ abstract class UpdateAdapter extends \JAdapterInstance
 	 * Element call stack
 	 *
 	 * @var    array
-	 * @since  12.1
+	 * @since  3.0.0
 	 */
 	protected $stack = array('base');
 
@@ -45,7 +47,7 @@ abstract class UpdateAdapter extends \JAdapterInstance
 	 * ID of update site
 	 *
 	 * @var    string
-	 * @since  12.1
+	 * @since  3.0.0
 	 */
 	protected $updateSiteId = 0;
 
@@ -53,9 +55,9 @@ abstract class UpdateAdapter extends \JAdapterInstance
 	 * Columns in the extensions table to be updated
 	 *
 	 * @var    array
-	 * @since  12.1
+	 * @since  3.0.0
 	 */
-	protected $updatecols = array('NAME', 'ELEMENT', 'TYPE', 'FOLDER', 'CLIENT', 'VERSION', 'DESCRIPTION', 'INFOURL', 'EXTRA_QUERY');
+	protected $updatecols = array('NAME', 'ELEMENT', 'TYPE', 'FOLDER', 'CLIENT', 'VERSION', 'DESCRIPTION', 'INFOURL', 'CHANGELOGURL', 'EXTRA_QUERY');
 
 	/**
 	 * Should we try appending a .xml extension to the update site's URL?
@@ -98,7 +100,7 @@ abstract class UpdateAdapter extends \JAdapterInstance
 	 *
 	 * @return  object
 	 *
-	 * @since   11.1
+	 * @since   1.7.0
 	 */
 	protected function _getStackLocation()
 	{
@@ -110,7 +112,7 @@ abstract class UpdateAdapter extends \JAdapterInstance
 	 *
 	 * @return  object
 	 *
-	 * @since   11.1
+	 * @since   1.7.0
 	 */
 	protected function _getLastTag()
 	{
@@ -124,7 +126,7 @@ abstract class UpdateAdapter extends \JAdapterInstance
 	 *
 	 * @return  array  Update_sites and updates discovered
 	 *
-	 * @since   11.1
+	 * @since   1.7.0
 	 */
 	abstract public function findUpdate($options);
 
@@ -141,7 +143,7 @@ abstract class UpdateAdapter extends \JAdapterInstance
 	protected function toggleUpdateSite($update_site_id, $enabled = true)
 	{
 		$update_site_id = (int) $update_site_id;
-		$enabled = (bool) $enabled;
+		$enabled = (bool) $enabled ? 1 : 0;
 
 		if (empty($update_site_id))
 		{
@@ -150,9 +152,11 @@ abstract class UpdateAdapter extends \JAdapterInstance
 
 		$db = $this->parent->getDbo();
 		$query = $db->getQuery(true)
-			->update($db->qn('#__update_sites'))
-			->set($db->qn('enabled') . ' = ' . $db->q($enabled ? 1 : 0))
-			->where($db->qn('update_site_id') . ' = ' . $db->q($update_site_id));
+			->update($db->quoteName('#__update_sites'))
+			->set($db->quoteName('enabled') . ' = :enabled')
+			->where($db->quoteName('update_site_id') . ' = :id')
+			->bind(':enabled', $enabled, ParameterType::INTEGER)
+			->bind(':id', $update_site_id, ParameterType::INTEGER);
 		$db->setQuery($query);
 
 		try
@@ -183,9 +187,10 @@ abstract class UpdateAdapter extends \JAdapterInstance
 
 		$db = $this->parent->getDbo();
 		$query = $db->getQuery(true)
-					->select($db->qn('name'))
-					->from($db->qn('#__update_sites'))
-					->where($db->qn('update_site_id') . ' = ' . $db->q($updateSiteId));
+			->select($db->quoteName('name'))
+			->from($db->quoteName('#__update_sites'))
+			->where($db->quoteName('update_site_id') . ' = :id')
+			->bind(':id', $updateSiteId, ParameterType::INTEGER);
 		$db->setQuery($query);
 
 		$name = '';
@@ -207,7 +212,7 @@ abstract class UpdateAdapter extends \JAdapterInstance
 	 *
 	 * @param   array  $options  The update options, see findUpdate() in children classes
 	 *
-	 * @return  bool|\JHttpResponse  False if we can't connect to the site, JHttpResponse otherwise
+	 * @return  boolean|\JHttpResponse  False if we can't connect to the site, JHttpResponse otherwise
 	 *
 	 * @throws  \Exception
 	 */
@@ -285,7 +290,7 @@ abstract class UpdateAdapter extends \JAdapterInstance
 			// Log the exact update site name and URL which could not be loaded
 			Log::add('Error opening url: ' . $url . ' for update site: ' . $this->updateSiteName, Log::WARNING, 'updater');
 			$app = Factory::getApplication();
-			$app->enqueueMessage(\JText::sprintf('JLIB_UPDATER_ERROR_OPEN_UPDATE_SITE', $this->updateSiteId, $this->updateSiteName, $url), 'warning');
+			$app->enqueueMessage(Text::sprintf('JLIB_UPDATER_ERROR_OPEN_UPDATE_SITE', $this->updateSiteId, $this->updateSiteName, $url), 'warning');
 
 			return false;
 		}

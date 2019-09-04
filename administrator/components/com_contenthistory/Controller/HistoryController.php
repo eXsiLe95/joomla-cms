@@ -3,14 +3,18 @@
  * @package     Joomla.Administrator
  * @subpackage  com_contenthistory
  *
- * @copyright   Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright   Copyright (C) 2005 - 2019 Open Source Matters, Inc. All rights reserved.
  * @license     GNU General Public License version 2 or later; see LICENSE.txt
  */
+
 namespace Joomla\Component\Contenthistory\Administrator\Controller;
 
 defined('_JEXEC') or die;
 
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\MVC\Controller\AdminController;
+use Joomla\CMS\Router\Route;
+use Joomla\CMS\Session\Session;
 use Joomla\Utilities\ArrayHelper;
 
 /**
@@ -20,52 +24,6 @@ use Joomla\Utilities\ArrayHelper;
  */
 class HistoryController extends AdminController
 {
-	/**
-	 * Deletes and returns correctly.
-	 *
-	 * @return	void
-	 *
-	 * @since	3.2
-	 */
-	public function delete()
-	{
-		\JSession::checkToken() or jexit(\JText::_('JINVALID_TOKEN'));
-
-		// Get items to remove from the request.
-		$cid = $this->input->get('cid', array(), 'array');
-
-		if (!is_array($cid) || count($cid) < 1)
-		{
-			$this->app->enqueueMessage(\JText::_('COM_CONTENTHISTORY_NO_ITEM_SELECTED'), 'warning');
-		}
-		else
-		{
-			// Get the model.
-			$model = $this->getModel();
-
-			// Make sure the item ids are integers
-			$cid = ArrayHelper::toInteger($cid);
-
-			// Remove the items.
-			if ($model->delete($cid))
-			{
-				$this->setMessage(\JText::plural('COM_CONTENTHISTORY_N_ITEMS_DELETED', count($cid)));
-			}
-			else
-			{
-				$this->setMessage($model->getError(), 'error');
-			}
-		}
-
-		$this->setRedirect(
-			\JRoute::_(
-				'index.php?option=com_contenthistory&view=history&layout=modal&tmpl=component&item_id='
-				. $this->input->getInt('item_id') . '&type_id=' . $this->input->getInt('type_id')
-				. '&type_alias=' . $this->input->getCmd('type_alias') . '&' . \JSession::getFormToken() . '=1', false
-			)
-		);
-	}
-
 	/**
 	 * Proxy for getModel.
 	 *
@@ -91,14 +49,14 @@ class HistoryController extends AdminController
 	 */
 	public function keep()
 	{
-		\JSession::checkToken() or jexit(\JText::_('JINVALID_TOKEN'));
+		$this->checkToken();
 
 		// Get items to remove from the request.
 		$cid = $this->input->get('cid', array(), 'array');
 
 		if (!is_array($cid) || count($cid) < 1)
 		{
-			$this->app->enqueueMessage(\JText::_('COM_CONTENTHISTORY_NO_ITEM_SELECTED'), 'warning');
+			$this->app->enqueueMessage(Text::_('COM_CONTENTHISTORY_NO_ITEM_SELECTED'), 'warning');
 		}
 		else
 		{
@@ -111,7 +69,7 @@ class HistoryController extends AdminController
 			// Remove the items.
 			if ($model->keep($cid))
 			{
-				$this->setMessage(\JText::plural('COM_CONTENTHISTORY_N_ITEMS_KEEP_TOGGLE', count($cid)));
+				$this->setMessage(Text::plural('COM_CONTENTHISTORY_N_ITEMS_KEEP_TOGGLE', count($cid)));
 			}
 			else
 			{
@@ -120,11 +78,25 @@ class HistoryController extends AdminController
 		}
 
 		$this->setRedirect(
-			\JRoute::_(
+			Route::_(
 				'index.php?option=com_contenthistory&view=history&layout=modal&tmpl=component&item_id='
 				. $this->input->getInt('item_id') . '&type_id=' . $this->input->getInt('type_id')
-				. '&type_alias=' . $this->input->getCmd('type_alias') . '&' . \JSession::getFormToken() . '=1', false
+				. '&type_alias=' . $this->input->getCmd('type_alias') . '&' . Session::getFormToken() . '=1', false
 			)
 		);
+	}
+
+	/**
+	 * Gets the URL arguments to append to a list redirect.
+	 *
+	 * @return  string  The arguments to append to the redirect URL.
+	 *
+	 * @since   __DEPLOY_VERSION__
+	 */
+	protected function getRedirectToListAppend()
+	{
+		return '&layout=modal&tmpl=component&item_id='
+			. $this->input->getInt('item_id') . '&type_id=' . $this->input->getInt('type_id')
+			. '&type_alias=' . $this->input->getCmd('type_alias') . '&' . Session::getFormToken() . '=1';
 	}
 }

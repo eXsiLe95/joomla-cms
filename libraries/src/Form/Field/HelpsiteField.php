@@ -2,26 +2,26 @@
 /**
  * Joomla! Content Management System
  *
- * @copyright  Copyright (C) 2005 - 2017 Open Source Matters, Inc. All rights reserved.
+ * @copyright  Copyright (C) 2005 - 2019 Open Source Matters, Inc. All rights reserved.
  * @license    GNU General Public License version 2 or later; see LICENSE.txt
  */
 
 namespace Joomla\CMS\Form\Field;
 
-defined('JPATH_PLATFORM') or die;
+\defined('JPATH_PLATFORM') or die;
 
-use Joomla\CMS\Form\FormHelper;
 use Joomla\CMS\Help\Help;
-
-FormHelper::loadFieldClass('list');
+use Joomla\CMS\HTML\HTMLHelper;
+use Joomla\CMS\Language\Text;
 
 /**
  * Form Field class for the Joomla Platform.
  * Provides a select list of help sites.
  *
- * @since  1.6
+ * @since       1.6
+ * @deprecated  4.0 To be removed
  */
-class HelpsiteField extends \JFormFieldList
+class HelpsiteField extends ListField
 {
 	/**
 	 * The form field type.
@@ -55,19 +55,19 @@ class HelpsiteField extends \JFormFieldList
 	 */
 	protected function getInput()
 	{
-		\JHtml::_('script', 'legacy/helpsite.js', array('version' => 'auto', 'relative' => true));
+		HTMLHelper::_('script', 'legacy/helpsite.js', array('version' => 'auto', 'relative' => true));
 
 		$showDefault = (string) $this->getAttribute('showDefault') === 'false' ? 'false' : 'true';
 
 		$html = parent::getInput();
 		$button = '<button
 						type="button"
-						class="btn btn-secondary btn-sm"
+						class="btn btn-secondary"
 						id="helpsite-refresh"
 						rel="' . $this->id . '"
 						showDefault="' . $showDefault . '"
 					>
-					<span>' . \JText::_('JGLOBAL_HELPREFRESH_BUTTON') . '</span>
+					<span>' . Text::_('JGLOBAL_HELPREFRESH_BUTTON') . '</span>
 					</button>';
 
 		return $html . $button;
